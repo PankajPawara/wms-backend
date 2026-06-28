@@ -8,7 +8,7 @@ const createUserSchema = Joi.object({
   }),
   email: Joi.string().email().lowercase().required(),
   address: Joi.string().trim().allow('').optional(),
-  role: Joi.string().valid('admin', 'employee').default('employee'),
+  role: Joi.string().valid('admin', 'employee', 'picker', 'checker').default('employee'),
   temporary_password: Joi.string().min(8).required().messages({
     'string.min': 'Temporary password must be at least 8 characters',
   }),
