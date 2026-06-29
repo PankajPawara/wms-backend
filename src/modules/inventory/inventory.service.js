@@ -107,4 +107,47 @@ const getAllInventory = async ({ page = 1, limit = 50, search = '' }) => {
   return { items, total, page, limit };
 };
 
-module.exports = { importInventory, getCurrentVersion, downloadInventory, findByBarcode, findByPartNo, searchInventory, getAllInventory };
+const incrementInventoryVersion = async (adminId, description, fileName = 'Manual Edit') => {
+  const newVersion = await generateNextVersion();
+  await InventoryVersion.updateMany({}, { is_active: false });
+  const totalCount = await Inventory.countDocuments({});
+  await InventoryVersion.create({
+    version: newVersion,
+    total_products: totalCount,
+    imported_by: adminId,
+    file_name: fileName,
+    is_active: true,
+  });
+  await ActivityLog.create({
+    user_id: adminId,
+    event_type: 'INVENTORY_IMPORTED',
+    description: `Inventory version updated to ${newVersion}: ${description}`,
+    metadata: { version: newVersion, total_products: totalCount, file_name: fileName },
+  });
+};
+
+const updateInventoryItem = async (id, data, adminId) => {
+  const item = await Inventory.findByIdAndUpdate(id, data, { new: true });
+  if (!item) throw new AppError('Inventory item not found', 404, 'INVENTORY_NOT_FOUND');
+  await incrementInventoryVersion(adminId, `Updated part ${item.part_no}`);
+  return item;
+};
+
+const deleteInventoryItem = async (id, adminId) => {
+  const item = await Inventory.findByIdAndDelete(id);
+  if (!item) throw new AppError('Inventory item not found', 404, 'INVENTORY_NOT_FOUND');
+  await incrementInventoryVersion(adminId, `Deleted part ${item.part_no}`);
+  return item;
+};
+
+module.exports = { 
+  importInventory, 
+  getCurrentVersion, 
+  downloadInventory, 
+  findByBarcode, 
+  findByPartNo, 
+  searchInventory, 
+  getAllInventory,
+  updateInventoryItem,
+  deleteInventoryItem
+};

@@ -1,9 +1,9 @@
 const XLSX = require('xlsx');
 const AppError = require('./error.util');
 
-// Normalize column header to lowercase snake_case
+// Normalize column header by lowercasing and removing spaces/punctuation
 const normalizeHeader = (header) =>
-  String(header).trim().toLowerCase().replace(/\s+/g, '_');
+  String(header).trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 
 /**
  * Parse an inventory Excel file.
@@ -27,11 +27,11 @@ const parseInventoryExcel = (filePath) => {
     throw new AppError('The Excel file is empty or has no data rows.', 422, 'INVENTORY_IMPORT_FAILED');
   }
 
-  // Normalize headers on first row to detect columns
+  // Normalize row keys to string values
   const normalizedRows = rawRows.map((row) => {
     const normalized = {};
     Object.keys(row).forEach((key) => {
-      normalized[normalizeHeader(key)] = String(row[key]).trim();
+      normalized[key] = String(row[key]).trim();
     });
     return normalized;
   });
@@ -39,7 +39,6 @@ const parseInventoryExcel = (filePath) => {
   // Check required columns
   const firstRow = normalizedRows[0];
   const requiredCols = ['part_no', 'barcode', 'location'];
-  // Also accept common aliases
   const aliases = {
     part_no: ['part_no', 'partno', 'part_number', 'partnumber', 'part_no.', 'item_no', 'itemno'],
     barcode: ['barcode', 'bar_code', 'barcode_no', 'ean', 'upc'],
@@ -47,11 +46,14 @@ const parseInventoryExcel = (filePath) => {
     description: ['description', 'desc', 'product_name', 'name', 'item_name', 'part_name'],
   };
 
-  // Map actual column names from the file
+  // Map actual column names from the file using normalized matches
   const colMap = {};
   Object.keys(aliases).forEach((field) => {
-    const found = aliases[field].find((alias) => Object.prototype.hasOwnProperty.call(firstRow, alias));
-    if (found) colMap[field] = found;
+    const foundKey = Object.keys(firstRow).find((key) => {
+      const normKey = normalizeHeader(key);
+      return aliases[field].some((alias) => normalizeHeader(alias) === normKey);
+    });
+    if (foundKey) colMap[field] = foundKey;
   });
 
   requiredCols.forEach((col) => {
@@ -64,43 +66,86 @@ const parseInventoryExcel = (filePath) => {
     }
   });
 
-  // Parse and validate rows
-  const products = [];
   const errors = [];
-  const seenPartNos = new Set();
-  const seenBarcodes = new Set();
+  const groupedByBarcode = {};
 
   normalizedRows.forEach((row, index) => {
-    const rowNum = index + 2; // +2 for header row + 1-based
-    const partNo = row[colMap['part_no']];
-    const barcode = row[colMap['barcode']];
-    const location = row[colMap['location']];
+    const rowNum = index + 2; // +2 for header row + 1-based index
+    const partNo = row[colMap['part_no']] || '';
+    const barcode = row[colMap['barcode']] || '';
+    let location = row[colMap['location']] || '';
     const description = colMap['description'] ? row[colMap['description']] : '';
 
-    if (!partNo) { errors.push(`Row ${rowNum}: part_no is empty`); return; }
-    if (!barcode) { errors.push(`Row ${rowNum}: barcode is empty`); return; }
-    if (!location) { errors.push(`Row ${rowNum}: location is empty`); return; }
-
-    if (seenPartNos.has(partNo)) {
-      errors.push(`Row ${rowNum}: Duplicate part_no "${partNo}" in file`);
-      return;
+    // Default missing locations to LOCATION NOT DEFINED
+    if (!location) {
+      location = 'LOCATION NOT DEFINED';
     }
-    if (seenBarcodes.has(barcode)) {
-      errors.push(`Row ${rowNum}: Duplicate barcode "${barcode}" in file`);
+
+    if (!partNo && !barcode) {
+      // Skip completely empty lines
       return;
     }
 
-    seenPartNos.add(partNo);
-    seenBarcodes.add(barcode);
+    if (!partNo) {
+      errors.push(`Row ${rowNum}: part_no is empty`);
+      return;
+    }
+    if (!barcode) {
+      errors.push(`Row ${rowNum}: barcode is empty`);
+      return;
+    }
 
-    products.push({ part_no: partNo, barcode, location, description });
+    const key = barcode.trim();
+    if (!groupedByBarcode[key]) {
+      groupedByBarcode[key] = [];
+    }
+    groupedByBarcode[key].push({
+      rowNum,
+      part_no: partNo.trim(),
+      barcode: barcode.trim(),
+      location: location.trim(),
+      description: description.trim(),
+    });
   });
 
   if (errors.length > 0) {
-    const err = new AppError('Import validation failed. Fix the listed errors and re-upload.', 422, 'INVENTORY_IMPORT_FAILED');
+    const err = new AppError('Import validation failed.', 422, 'INVENTORY_IMPORT_FAILED');
     err.validationErrors = errors;
     throw err;
   }
+
+  // Deduplicate and filter groups
+  const products = [];
+  const seenPartNoLocations = new Set();
+  const seenBarcodeLocations = new Set();
+
+  Object.keys(groupedByBarcode).forEach((barcodeKey) => {
+    const group = groupedByBarcode[barcodeKey];
+
+    // If duplicate barcode entries exist, filter out LOCATION NOT DEFINED records if a valid location exists
+    const hasDefinedLocation = group.some((item) => item.location.toUpperCase() !== 'LOCATION NOT DEFINED');
+    let filteredGroup = group;
+    if (hasDefinedLocation) {
+      filteredGroup = group.filter((item) => item.location.toUpperCase() !== 'LOCATION NOT DEFINED');
+    }
+
+    filteredGroup.forEach((item) => {
+      const partLocKey = `${item.part_no.toUpperCase()}@${item.location.toUpperCase()}`;
+      const barLocKey = `${item.barcode.toUpperCase()}@${item.location.toUpperCase()}`;
+
+      // Prevent duplicating the exact same part or barcode at the same location
+      if (!seenPartNoLocations.has(partLocKey) && !seenBarcodeLocations.has(barLocKey)) {
+        seenPartNoLocations.add(partLocKey);
+        seenBarcodeLocations.add(barLocKey);
+        products.push({
+          part_no: item.part_no,
+          barcode: item.barcode,
+          location: item.location,
+          description: item.description,
+        });
+      }
+    });
+  });
 
   return products;
 };

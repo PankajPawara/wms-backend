@@ -25,4 +25,10 @@ router.get('/', adminMiddleware, inventoryController.getAllInventory);
 // POST /api/inventory/import  - admin Excel import
 router.post('/import', adminMiddleware, inventoryController.importInventory);
 
+// PATCH /api/inventory/:id  - admin edit item
+router.patch('/:id', adminMiddleware, inventoryController.updateInventoryItem);
+
+// DELETE /api/inventory/:id  - admin delete item
+router.delete('/:id', adminMiddleware, inventoryController.deleteInventoryItem);
+
 module.exports = router;

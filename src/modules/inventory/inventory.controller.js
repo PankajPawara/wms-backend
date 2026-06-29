@@ -80,4 +80,27 @@ const getAllInventory = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { importInventory, getCurrentVersion, downloadInventory, findByBarcode, searchInventory, getAllInventory };
+const updateInventoryItem = async (req, res, next) => {
+  try {
+    const item = await inventoryService.updateInventoryItem(req.params.id, req.body, req.user._id);
+    return res.status(200).json(successResponse('Inventory item updated successfully', { item }));
+  } catch (err) { next(err); }
+};
+
+const deleteInventoryItem = async (req, res, next) => {
+  try {
+    const item = await inventoryService.deleteInventoryItem(req.params.id, req.user._id);
+    return res.status(200).json(successResponse('Inventory item deleted successfully', { item }));
+  } catch (err) { next(err); }
+};
+
+module.exports = { 
+  importInventory, 
+  getCurrentVersion, 
+  downloadInventory, 
+  findByBarcode, 
+  searchInventory, 
+  getAllInventory,
+  updateInventoryItem,
+  deleteInventoryItem
+};
