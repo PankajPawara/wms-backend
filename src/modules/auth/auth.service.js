@@ -5,7 +5,13 @@ const AppError = require('../../utils/error.util');
 
 const login = async ({ employee_id, password }) => {
   // Find user with password_hash included
-  const user = await User.findOne({ employee_id: employee_id.toUpperCase() }).select('+password_hash');
+  const user = await User.findOne({
+    $or: [
+      { employee_id: employee_id.toUpperCase() },
+      { email: employee_id.toLowerCase() },
+      { mobile: employee_id }
+    ]
+  }).select('+password_hash');
   if (!user) {
     throw new AppError('Invalid Employee ID or password', 401, 'UNAUTHORIZED');
   }
