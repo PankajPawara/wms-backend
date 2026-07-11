@@ -74,8 +74,15 @@ const searchInventory = async (req, res, next) => {
 
 const getAllInventory = async (req, res, next) => {
   try {
-    const { page = 1, limit = 50, search = '' } = req.query;
-    const result = await inventoryService.getAllInventory({ page: parseInt(page), limit: parseInt(limit), search });
+    const { page = 1, limit = 25, search = '', searchBy = 'all', sortBy = 'location', sortOrder = 'asc' } = req.query;
+    const result = await inventoryService.getAllInventory({
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      searchBy,
+      sortBy,
+      sortOrder
+    });
     return res.status(200).json(paginatedResponse('Inventory fetched', result.items, result.total, result.page, result.limit));
   } catch (err) { next(err); }
 };

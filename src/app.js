@@ -9,6 +9,7 @@ const inventoryRoutes = require('./modules/inventory/inventory.routes');
 const orderRoutes = require('./modules/orders/order.routes');
 const syncRoutes = require('./modules/sync/sync.routes');
 const systemRoutes = require('./modules/system/system.routes');
+const notificationRoutes = require('./modules/notifications/notification.routes');
 const errorMiddleware = require('./middleware/error.middleware');
 
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/system', systemRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // --- 404 handler ---
 app.use('*', (req, res) => {

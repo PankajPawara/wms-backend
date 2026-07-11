@@ -44,6 +44,8 @@ const parseInventoryExcel = (filePath) => {
     barcode: ['barcode', 'bar_code', 'barcode_no', 'ean', 'upc'],
     location: ['location', 'loc', 'loc.', 'rack', 'rack_location', 'shelf'],
     description: ['description', 'desc', 'product_name', 'name', 'item_name', 'part_name'],
+    price: ['price', 'selling_price', 'mrp', 'rate', 'unit_price', 'sellingprice'],
+    stock: ['stock', 'qty', 'quantity', 'in_stock', 'instock', 'available_stock', 'balance'],
   };
 
   // Map actual column names from the file using normalized matches
@@ -75,6 +77,8 @@ const parseInventoryExcel = (filePath) => {
     const barcode = row[colMap['barcode']] || '';
     let location = row[colMap['location']] || '';
     const description = colMap['description'] ? row[colMap['description']] : '';
+    const priceStr = colMap['price'] ? row[colMap['price']] : '';
+    const stockStr = colMap['stock'] ? row[colMap['stock']] : '';
 
     // Default missing locations to LOCATION NOT DEFINED
     if (!location) {
@@ -83,6 +87,11 @@ const parseInventoryExcel = (filePath) => {
 
     if (!partNo && !barcode) {
       // Skip completely empty lines
+      return;
+    }
+
+    // Skip records containing hashes (e.g. ### overflow errors)
+    if (partNo.includes('#') || barcode.includes('#') || location.includes('#')) {
       return;
     }
 
@@ -95,6 +104,9 @@ const parseInventoryExcel = (filePath) => {
       return;
     }
 
+    const price = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0.0;
+    const stock = parseInt(stockStr.replace(/[^0-9]/g, ''), 10) || 0;
+
     const key = barcode.trim();
     if (!groupedByBarcode[key]) {
       groupedByBarcode[key] = [];
@@ -105,6 +117,8 @@ const parseInventoryExcel = (filePath) => {
       barcode: barcode.trim(),
       location: location.trim(),
       description: description.trim(),
+      price,
+      stock,
     });
   });
 
@@ -142,6 +156,8 @@ const parseInventoryExcel = (filePath) => {
           barcode: item.barcode,
           location: item.location,
           description: item.description,
+          price: item.price,
+          stock: item.stock,
         });
       }
     });

@@ -90,18 +90,35 @@ const searchInventory = async (query, limit = 20) => {
   return products;
 };
 
-const getAllInventory = async ({ page = 1, limit = 50, search = '' }) => {
+const getAllInventory = async ({ page = 1, limit = 50, search = '', searchBy = 'all', sortBy = 'location', sortOrder = 'asc' }) => {
   const query = {};
   if (search) {
-    query.$or = [
-      { part_no: { $regex: search, $options: 'i' } },
-      { barcode: { $regex: search, $options: 'i' } },
-      { description: { $regex: search, $options: 'i' } },
-    ];
+    const regex = { $regex: search, $options: 'i' };
+    if (searchBy === 'part_no') {
+      query.part_no = regex;
+    } else if (searchBy === 'barcode') {
+      query.barcode = regex;
+    } else if (searchBy === 'description') {
+      query.description = regex;
+    } else if (searchBy === 'location') {
+      query.location = regex;
+    } else {
+      query.$or = [
+        { part_no: regex },
+        { barcode: regex },
+        { description: regex },
+        { location: regex }
+      ];
+    }
   }
   const skip = (page - 1) * limit;
+
+  const sortDirection = sortOrder === 'desc' ? -1 : 1;
+  const sortObj = {};
+  sortObj[sortBy] = sortDirection;
+
   const [items, total] = await Promise.all([
-    Inventory.find(query).sort({ part_no: 1 }).skip(skip).limit(limit),
+    Inventory.find(query).sort(sortObj).skip(skip).limit(limit),
     Inventory.countDocuments(query),
   ]);
   return { items, total, page, limit };

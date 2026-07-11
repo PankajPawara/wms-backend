@@ -6,6 +6,8 @@ const inventorySchema = new mongoose.Schema(
     barcode: { type: String, required: true, trim: true },
     description: { type: String, trim: true, default: '' },
     location: { type: String, required: true, trim: true, uppercase: true },
+    price: { type: Number, default: 0.0 },
+    stock: { type: Number, default: 0 },
     version: { type: String, required: true },
   },
   { timestamps: true }
