@@ -4,6 +4,7 @@ const systemController = require('./system.controller');
 const authMiddleware = require('../../middleware/auth.middleware');
 
 router.get('/health', systemController.healthCheck);
+router.get('/app-config', systemController.getAppConfig);
 router.get('/info', authMiddleware, systemController.getSystemInfo);
 
 module.exports = router;
