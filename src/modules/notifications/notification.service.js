@@ -5,13 +5,17 @@ const AppError = require('../../utils/error.util');
 
 const getNotificationsForUser = async (user) => {
   // Ensure a gentle app update notification is present in the database
-  const appUpdate = await Notification.findOne({ type: 'APP_UPDATE' });
+  let appUpdate = await Notification.findOne({ type: 'APP_UPDATE' });
   if (!appUpdate) {
-    await Notification.create({
+    appUpdate = await Notification.create({
       title: 'App Update Available',
       message: 'A new version of Warehouse Scanner (v3) is now available. Please sync your local database to apply changes.',
       type: 'APP_UPDATE',
+      is_read: true,
     });
+  } else if (!appUpdate.is_read) {
+    appUpdate.is_read = true;
+    await appUpdate.save();
   }
 
   if (user.role === 'admin') {
