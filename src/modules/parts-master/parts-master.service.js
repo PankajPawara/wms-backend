@@ -12,11 +12,14 @@ const getParts = async (search) => {
       $or: [
         { partNo: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { location: { $regex: search, $options: 'i' } },
         { barcode: { $regex: search, $options: 'i' } }
       ]
     };
   }
-  return await PartsMaster.find(query).sort({ lastSeenAt: -1 }).limit(100);
+  const total = await PartsMaster.countDocuments(query);
+  const parts = await PartsMaster.find(query).sort({ lastSeenAt: -1 }).limit(100);
+  return { parts, total };
 };
 
 /**

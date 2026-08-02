@@ -4,8 +4,8 @@ const { successResponse, errorResponse } = require('../../utils/response.util');
 const getParts = async (req, res, next) => {
   try {
     const { search } = req.query;
-    const parts = await partsMasterService.getParts(search);
-    return res.status(200).json(successResponse('Parts retrieved successfully', { parts }));
+    const { parts, total } = await partsMasterService.getParts(search);
+    return res.status(200).json(successResponse('Parts retrieved successfully', { parts, total }));
   } catch (err) {
     next(err);
   }
