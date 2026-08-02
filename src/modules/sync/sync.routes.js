@@ -8,5 +8,6 @@ router.use(authMiddleware);
 router.get('/status', syncController.getSyncStatus);
 router.post('/orders', syncController.syncOrders);
 router.post('/order-items', syncController.syncOrderItems);
+router.post('/parts-master', syncController.syncPartsMaster);
 
 module.exports = router;

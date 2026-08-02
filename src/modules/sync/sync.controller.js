@@ -24,4 +24,12 @@ const syncOrderItems = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { getSyncStatus, syncOrders, syncOrderItems };
+const syncPartsMaster = async (req, res, next) => {
+  try {
+    const { parts = [] } = req.body;
+    const results = await syncService.syncPartsMaster(parts, req.user._id);
+    return res.status(200).json(successResponse('Parts Master synced', { results }));
+  } catch (err) { next(err); }
+};
+
+module.exports = { getSyncStatus, syncOrders, syncOrderItems, syncPartsMaster };

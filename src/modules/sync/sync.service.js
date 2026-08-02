@@ -2,6 +2,7 @@ const Order = require('../../models/Order.model');
 const OrderItem = require('../../models/OrderItem.model');
 const InventoryVersion = require('../../models/InventoryVersion.model');
 const ActivityLog = require('../../models/ActivityLog.model');
+const PartsMaster = require('../../models/PartsMaster.model');
 const orderService = require('../orders/order.service');
 
 const getSyncStatus = async () => {
@@ -55,4 +56,32 @@ const syncOrderItems = async (items, userId) => {
   return results;
 };
 
-module.exports = { getSyncStatus, syncOrders, syncOrderItems };
+/** Sync authoritative Parts Master records from mobile */
+const syncPartsMaster = async (parts, userId) => {
+  const results = [];
+  for (const part of parts) {
+    try {
+      const { partNo, ...updateData } = part;
+      const updatedPart = await PartsMaster.findOneAndUpdate(
+        { partNo },
+        updateData,
+        { new: true, upsert: true }
+      );
+      results.push({ partNo, success: true });
+    } catch (err) {
+      results.push({ partNo: part.partNo, success: false, error: err.message });
+    }
+  }
+
+  const successCount = results.filter((r) => r.success).length;
+  if (successCount > 0) {
+    await ActivityLog.create({
+      user_id: userId,
+      event_type: 'SYNC_SUCCESS',
+      description: `Mobile sync: ${successCount}/${parts.length} PartsMaster records synced`,
+    });
+  }
+  return results;
+};
+
+module.exports = { getSyncStatus, syncOrders, syncOrderItems, syncPartsMaster };
