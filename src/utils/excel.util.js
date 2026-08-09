@@ -21,64 +21,84 @@ const parseInventoryExcel = (filePath) => {
 
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
-  const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+  // Parse as array of arrays
+  const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
 
   if (rawRows.length === 0) {
     throw new AppError('The Excel file is empty or has no data rows.', 422, 'INVENTORY_IMPORT_FAILED');
   }
 
-  // Normalize row keys to string values
-  const normalizedRows = rawRows.map((row) => {
-    const normalized = {};
-    Object.keys(row).forEach((key) => {
-      normalized[key] = String(row[key]).trim();
+  const firstRow = rawRows[0].map((c) => String(c).trim());
+  const headerText = firstRow.join(' ').toLowerCase();
+  
+  // Auto-detect if first row is a header
+  const isHeader = headerText.includes('part') || headerText.includes('barcode') || headerText.includes('loc');
+
+  let colMap = {};
+  let dataRows = [];
+  let rowOffset = 1;
+
+  if (isHeader) {
+    const requiredCols = ['part_no', 'barcode', 'location'];
+    const aliases = {
+      part_no: ['part_no', 'partno', 'part_number', 'partnumber', 'part_no.', 'item_no', 'itemno'],
+      barcode: ['barcode', 'bar_code', 'barcode_no', 'ean', 'upc'],
+      location: ['location', 'loc', 'loc.', 'rack', 'rack_location', 'shelf'],
+      description: ['description', 'desc', 'product_name', 'name', 'item_name', 'part_name'],
+      price: ['price', 'selling_price', 'mrp', 'rate', 'unit_price', 'sellingprice'],
+      stock: ['stock', 'qty', 'quantity', 'in_stock', 'instock', 'available_stock', 'balance'],
+    };
+
+    Object.keys(aliases).forEach((field) => {
+      const idx = firstRow.findIndex((col) => {
+        const normKey = normalizeHeader(col);
+        return aliases[field].some((alias) => normalizeHeader(alias) === normKey);
+      });
+      if (idx !== -1) colMap[field] = idx;
     });
-    return normalized;
-  });
 
-  // Check required columns
-  const firstRow = normalizedRows[0];
-  const requiredCols = ['part_no', 'barcode', 'location'];
-  const aliases = {
-    part_no: ['part_no', 'partno', 'part_number', 'partnumber', 'part_no.', 'item_no', 'itemno'],
-    barcode: ['barcode', 'bar_code', 'barcode_no', 'ean', 'upc'],
-    location: ['location', 'loc', 'loc.', 'rack', 'rack_location', 'shelf'],
-    description: ['description', 'desc', 'product_name', 'name', 'item_name', 'part_name'],
-    price: ['price', 'selling_price', 'mrp', 'rate', 'unit_price', 'sellingprice'],
-    stock: ['stock', 'qty', 'quantity', 'in_stock', 'instock', 'available_stock', 'balance'],
-  };
-
-  // Map actual column names from the file using normalized matches
-  const colMap = {};
-  Object.keys(aliases).forEach((field) => {
-    const foundKey = Object.keys(firstRow).find((key) => {
-      const normKey = normalizeHeader(key);
-      return aliases[field].some((alias) => normalizeHeader(alias) === normKey);
+    requiredCols.forEach((col) => {
+      if (colMap[col] === undefined) {
+        throw new AppError(
+          `Missing required column: "${col}". File must have columns: part_no, barcode, location.`,
+          422,
+          'INVENTORY_IMPORT_FAILED'
+        );
+      }
     });
-    if (foundKey) colMap[field] = foundKey;
-  });
 
-  requiredCols.forEach((col) => {
-    if (!colMap[col]) {
-      throw new AppError(
-        `Missing required column: "${col}". File must have columns: part_no, barcode, location.`,
-        422,
-        'INVENTORY_IMPORT_FAILED'
-      );
-    }
-  });
+    dataRows = rawRows.slice(1);
+    rowOffset = 2; // +1 for 0-index, +1 for header row
+  } else {
+    // No header, assume fixed order: Part No, Barcode, Location
+    colMap = {
+      part_no: 0,
+      barcode: 1,
+      location: 2,
+    };
+    if (firstRow.length > 3) colMap.description = 3;
+    if (firstRow.length > 4) colMap.price = 4;
+    if (firstRow.length > 5) colMap.stock = 5;
+
+    dataRows = rawRows;
+    rowOffset = 1;
+  }
 
   const errors = [];
   const groupedByBarcode = {};
 
-  normalizedRows.forEach((row, index) => {
-    const rowNum = index + 2; // +2 for header row + 1-based index
-    const partNo = row[colMap['part_no']] || '';
-    const barcode = row[colMap['barcode']] || '';
-    let location = row[colMap['location']] || '';
-    const description = colMap['description'] ? row[colMap['description']] : '';
-    const priceStr = colMap['price'] ? row[colMap['price']] : '';
-    const stockStr = colMap['stock'] ? row[colMap['stock']] : '';
+  dataRows.forEach((row, index) => {
+    const rowNum = index + rowOffset;
+    
+    // Some rows might be shorter than the full column count
+    const getVal = (idx) => idx !== undefined && idx < row.length ? String(row[idx]).trim() : '';
+
+    const partNo = getVal(colMap['part_no']);
+    const barcode = getVal(colMap['barcode']);
+    let location = getVal(colMap['location']);
+    const description = getVal(colMap['description']);
+    const priceStr = getVal(colMap['price']);
+    const stockStr = getVal(colMap['stock']);
 
     // Default missing locations to LOCATION NOT DEFINED
     if (!location) {
@@ -107,16 +127,16 @@ const parseInventoryExcel = (filePath) => {
     const price = parseFloat(priceStr.replace(/[^0-9.]/g, '')) || 0.0;
     const stock = parseInt(stockStr.replace(/[^0-9]/g, ''), 10) || 0;
 
-    const key = barcode.trim();
+    const key = barcode;
     if (!groupedByBarcode[key]) {
       groupedByBarcode[key] = [];
     }
     groupedByBarcode[key].push({
       rowNum,
-      part_no: partNo.trim(),
-      barcode: barcode.trim(),
-      location: location.trim(),
-      description: description.trim(),
+      part_no: partNo,
+      barcode: barcode,
+      location: location,
+      description: description,
       price,
       stock,
     });

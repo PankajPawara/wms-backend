@@ -1,7 +1,8 @@
 const AppError = require('../utils/error.util');
 
 const adminMiddleware = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  const allowedRoles = ['developer', 'admin', 'acting_admin'];
+  if (!req.user || !allowedRoles.includes(req.user.role)) {
     return next(new AppError('Access denied. Admin only.', 403, 'FORBIDDEN'));
   }
   next();

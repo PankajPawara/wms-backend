@@ -14,4 +14,5 @@ module.exports = {
   JWT_EXPIRY: process.env.JWT_EXPIRY || '8h',
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
   MAX_UPLOAD_SIZE_MB: parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || 10,
+  FIREBASE_SERVICE_ACCOUNT_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
 };

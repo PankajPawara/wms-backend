@@ -12,6 +12,9 @@ const systemRoutes = require('./modules/system/system.routes');
 const notificationRoutes = require('./modules/notifications/notification.routes');
 const partsMasterRoutes = require('./modules/parts-master/parts-master.routes');
 const errorMiddleware = require('./middleware/error.middleware');
+const { initializeFirebase } = require('./config/firebase');
+
+initializeFirebase();
 
 const app = express();
 

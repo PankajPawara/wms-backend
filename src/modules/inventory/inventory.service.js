@@ -5,6 +5,7 @@ const InventoryVersion = require('../../models/InventoryVersion.model');
 const ActivityLog = require('../../models/ActivityLog.model');
 const { parseInventoryExcel } = require('../../utils/excel.util');
 const AppError = require('../../utils/error.util');
+const fcmService = require('../notifications/fcm.service');
 
 /** Generate next version string: v1, v2, v3... */
 const generateNextVersion = async () => {
@@ -24,12 +25,20 @@ const importInventory = async (filePath, fileName, adminId) => {
   // Mark previous versions as inactive
   await InventoryVersion.updateMany({}, { is_active: false });
 
-  // Replace all inventory (drop + insert for clean state)
-  await Inventory.deleteMany({});
-
-  // Batch insert with version tag
+  // Batch upsert with version tag
   const withVersion = products.map((p) => ({ ...p, version: newVersion }));
-  await Inventory.insertMany(withVersion, { ordered: false });
+  
+  const bulkOps = withVersion.map((product) => ({
+    updateOne: {
+      filter: { part_no: product.part_no, location: product.location },
+      update: { $set: product },
+      upsert: true,
+    }
+  }));
+
+  if (bulkOps.length > 0) {
+    await Inventory.bulkWrite(bulkOps, { ordered: false });
+  }
 
   // Create version record
   const version = await InventoryVersion.create({
@@ -38,6 +47,27 @@ const importInventory = async (filePath, fileName, adminId) => {
     imported_by: adminId,
     file_name: fileName,
     is_active: true,
+  });
+
+  // Add notification
+  await Notification.create({
+    user_id: null, // Global
+    type: 'APP_UPDATE',
+    title: 'New Inventory Version',
+    message: `Inventory updated to version ${newVersion}. Please pull to sync.`,
+    is_global: true,
+  });
+
+  // Send FCM push notification to devices
+  await fcmService.sendTopicNotification('inventory_updates', {
+    notification: {
+      title: 'Location Data Updated',
+      body: `Inventory locations updated to version ${newVersion}. Sync now for latest data.`,
+    },
+    data: {
+      type: 'INVENTORY_UPDATE',
+      version: newVersion,
+    }
   });
 
   // Cleanup uploaded file
@@ -140,6 +170,18 @@ const incrementInventoryVersion = async (adminId, description, fileName = 'Manua
     event_type: 'INVENTORY_IMPORTED',
     description: `Inventory version updated to ${newVersion}: ${description}`,
     metadata: { version: newVersion, total_products: totalCount, file_name: fileName },
+  });
+
+  // Send FCM push notification to devices
+  await fcmService.sendTopicNotification('inventory_updates', {
+    notification: {
+      title: 'Location Data Updated',
+      body: `Inventory locations updated to version ${newVersion}. Sync now for latest data.`,
+    },
+    data: {
+      type: 'INVENTORY_UPDATE',
+      version: newVersion,
+    }
   });
 };
 
