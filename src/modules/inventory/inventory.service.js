@@ -6,7 +6,7 @@ const ActivityLog = require('../../models/ActivityLog.model');
 const { parseInventoryExcel } = require('../../utils/excel.util');
 const AppError = require('../../utils/error.util');
 const fcmService = require('../notifications/fcm.service');
-
+const Notification = require('../../models/Notification.model');
 /** Generate next version string: v1, v2, v3... */
 const generateNextVersion = async () => {
   const latest = await InventoryVersion.findOne().sort({ createdAt: -1 });
