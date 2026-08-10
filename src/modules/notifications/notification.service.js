@@ -11,30 +11,37 @@ const getNotificationsForUser = async (user) => {
       title: 'App Update Available',
       message: 'A new version of Warehouse Scanner (v3) is now available. Please sync your local database to apply changes.',
       type: 'APP_UPDATE',
-      is_read: true,
+      is_read: false,
     });
-  } else if (!appUpdate.is_read) {
-    appUpdate.is_read = true;
-    await appUpdate.save();
   }
+
+  let notifications = [];
 
   if (user.role === 'admin') {
     // Admins see all admin notifications (user_id = null) + their own + PASSWORD_RESET_REQUESTS
-    return await Notification.find({
+    notifications = await Notification.find({
       $or: [
         { user_id: user._id },
         { user_id: null },
       ]
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
   } else {
     // Normal users see notifications targeted to them specifically (user_id = user._id) or global ones like APP_UPDATE (user_id = null)
-    return await Notification.find({
+    notifications = await Notification.find({
       $or: [
         { user_id: user._id },
         { user_id: null },
       ]
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
   }
+
+  // Compute read status per user for global notifications
+  return notifications.map(n => {
+    if (n.user_id === null) {
+      n.is_read = n.read_by && n.read_by.some(id => id.toString() === user._id.toString());
+    }
+    return n;
+  });
 };
 
 const createResetRequest = async (employeeId) => {
@@ -137,7 +144,13 @@ const handleResetAction = async (notificationId, action, adminId) => {
 };
 
 const markAllAsRead = async (userId) => {
+  // Mark personal notifications
   await Notification.updateMany({ user_id: userId, is_read: false }, { is_read: true });
+  // Mark global notifications
+  await Notification.updateMany(
+    { user_id: null, read_by: { $ne: userId } },
+    { $push: { read_by: userId } }
+  );
 };
 
 module.exports = {
