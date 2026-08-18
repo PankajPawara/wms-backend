@@ -3,7 +3,7 @@ const ActivityLog = require('../../models/ActivityLog.model');
 const AppError = require('../../utils/error.util');
 
 const getAllUsers = async ({ page = 1, limit = 20, search = '', status = '' }) => {
-  const query = {};
+  const query = { role: { $ne: 'developer' } };
   if (search) {
     query.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -70,12 +70,13 @@ const deleteUser = async (id) => {
 };
 
 const getStats = async () => {
+  const baseQuery = { role: { $ne: 'developer' } };
   const [total, active, inactive, adminCount, employeeCount] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ status: 'active' }),
-    User.countDocuments({ status: 'inactive' }),
-    User.countDocuments({ role: 'admin' }),
-    User.countDocuments({ role: 'employee' }),
+    User.countDocuments(baseQuery),
+    User.countDocuments({ ...baseQuery, status: 'active' }),
+    User.countDocuments({ ...baseQuery, status: 'inactive' }),
+    User.countDocuments({ ...baseQuery, role: 'admin' }),
+    User.countDocuments({ ...baseQuery, role: 'employee' }),
   ]);
   return { total, active, inactive, adminCount, employeeCount };
 };

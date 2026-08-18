@@ -41,10 +41,13 @@ const getAppConfig = async (req, res, next) => {
 const getSystemInfo = async (req, res, next) => {
   try {
     const inventoryVersion = await InventoryVersion.findOne({ is_active: true });
-    const recentActivity = await ActivityLog.find()
-      .populate('user_id', 'name employee_id')
+    const recentActivityRaw = await ActivityLog.find()
+      .populate('user_id', 'name employee_id role')
       .sort({ createdAt: -1 })
-      .limit(10);
+      .limit(30);
+    const recentActivity = recentActivityRaw
+      .filter(act => !act.user_id || act.user_id.role !== 'developer')
+      .slice(0, 10);
     return res.status(200).json(successResponse('System info', {
       app_version: version,
       db_status: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',

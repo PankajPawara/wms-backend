@@ -28,13 +28,25 @@ const importInventory = async (filePath, fileName, adminId) => {
   // Batch upsert with version tag
   const withVersion = products.map((p) => ({ ...p, version: newVersion }));
   
-  const bulkOps = withVersion.map((product) => ({
-    updateOne: {
-      filter: { part_no: product.part_no, location: product.location },
-      update: { $set: product },
-      upsert: true,
-    }
-  }));
+  const bulkOps = withVersion.map((product) => {
+    const updatePayload = {
+      part_no: product.part_no,
+      barcode: product.barcode,
+      location: product.location,
+      version: product.version,
+    };
+    if (product.description) updatePayload.description = product.description;
+    if (product.price) updatePayload.price = product.price;
+    if (product.stock) updatePayload.stock = product.stock;
+
+    return {
+      updateOne: {
+        filter: { part_no: product.part_no },
+        update: { $set: updatePayload },
+        upsert: true,
+      }
+    };
+  });
 
   if (bulkOps.length > 0) {
     await Inventory.bulkWrite(bulkOps, { ordered: false });
@@ -88,10 +100,17 @@ const getCurrentVersion = async () => {
   return version;
 };
 
-/** Download full inventory for mobile sync */
-const downloadInventory = async () => {
+/** Download inventory for mobile sync, optionally returning only delta */
+const downloadInventory = async (sinceDate) => {
   const version = await InventoryVersion.findOne({ is_active: true });
-  const items = await Inventory.find({}).lean();
+  const query = {};
+  if (sinceDate) {
+    const date = new Date(sinceDate);
+    if (!isNaN(date.getTime())) {
+      query.updatedAt = { $gt: date };
+    }
+  }
+  const items = await Inventory.find(query).lean();
   return { version: version ? version.version : 'v0', items };
 };
 

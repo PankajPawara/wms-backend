@@ -51,7 +51,8 @@ const getCurrentVersion = async (req, res, next) => {
 
 const downloadInventory = async (req, res, next) => {
   try {
-    const data = await inventoryService.downloadInventory();
+    const { since_date } = req.query;
+    const data = await inventoryService.downloadInventory(since_date);
     return res.status(200).json(successResponse('Inventory downloaded', data));
   } catch (err) { next(err); }
 };
