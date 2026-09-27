@@ -11,7 +11,7 @@ module.exports = {
   PORT: parseInt(process.env.PORT, 10) || 5000,
   MONGODB_URI: process.env.MONGODB_URI,
   JWT_SECRET: process.env.JWT_SECRET,
-  JWT_EXPIRY: process.env.JWT_EXPIRY || '8h',
+  JWT_EXPIRY: process.env.JWT_EXPIRY || '6d',
   UPLOAD_DIR: process.env.UPLOAD_DIR || 'uploads',
   MAX_UPLOAD_SIZE_MB: parseInt(process.env.MAX_UPLOAD_SIZE_MB, 10) || 10,
   FIREBASE_SERVICE_ACCOUNT_PATH: process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
