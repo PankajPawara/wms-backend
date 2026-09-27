@@ -13,4 +13,5 @@ router.get('/', notificationController.getNotifications);
 router.post('/read-all', notificationController.readAllNotifications);
 router.patch('/:id/action', notificationController.actionReset); // Admin actions to approve/reject
 
+router.delete('/:id', notificationController.deleteNotification);
 module.exports = router;

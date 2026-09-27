@@ -39,9 +39,19 @@ const readAllNotifications = async (req, res, next) => {
   }
 };
 
+const deleteNotification = async (req, res, next) => {
+  try {
+    await notificationService.deleteNotification(req.params.id, req.user._id);
+    res.status(200).json(successResponse('Notification deleted'));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getNotifications,
   requestReset,
   actionReset,
   readAllNotifications,
+  deleteNotification,
 };

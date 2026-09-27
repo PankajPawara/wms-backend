@@ -13,6 +13,7 @@ const notificationSchema = new mongoose.Schema(
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
     is_read: { type: Boolean, default: false },
     read_by: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    deleted_by: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     is_actioned: { type: Boolean, default: false },
   },
   { timestamps: true }

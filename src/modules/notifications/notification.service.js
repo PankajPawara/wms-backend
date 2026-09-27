@@ -23,16 +23,14 @@ const getNotificationsForUser = async (user) => {
       $or: [
         { user_id: user._id },
         { user_id: null },
-      ]
-    }).sort({ createdAt: -1 }).lean();
+      ], deleted_by: { $ne: user._id } }).sort({ createdAt: -1 }).lean();
   } else {
     // Normal users see notifications targeted to them specifically (user_id = user._id) or global ones like APP_UPDATE (user_id = null)
     notifications = await Notification.find({
       $or: [
         { user_id: user._id },
         { user_id: null },
-      ]
-    }).sort({ createdAt: -1 }).lean();
+      ], deleted_by: { $ne: user._id } }).sort({ createdAt: -1 }).lean();
   }
 
   // Compute read status per user for global notifications
@@ -151,6 +149,16 @@ const markAllAsRead = async (userId) => {
     { user_id: null, read_by: { $ne: userId } },
     { $push: { read_by: userId } }
   );
+};
+
+const deleteNotification = async (id, userId) => {
+  const notif = await Notification.findById(id);
+  if (!notif) throw new AppError('Notification not found', 404);
+  if (notif.user_id === null) {
+    await Notification.findByIdAndUpdate(id, { $push: { deleted_by: userId } });
+  } else {
+    await Notification.findByIdAndDelete(id);
+  }
 };
 
 module.exports = {
