@@ -1,5 +1,6 @@
 const notificationService = require('./notification.service');
 const { successResponse } = require('../../utils/response.util');
+const fcmService = require('./fcm.service');
 
 const getNotifications = async (req, res, next) => {
   try {
@@ -48,17 +49,6 @@ const deleteNotification = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  getNotifications,
-  requestReset,
-  actionReset,
-  readAllNotifications,
-  deleteNotification,
-  testPush,
-};
-
-const fcmService = require('./fcm.service');
-
 const testPush = async (req, res, next) => {
   try {
     const { token, title, body } = req.body;
@@ -73,7 +63,6 @@ const testPush = async (req, res, next) => {
     next(err);
   }
 };
-
 
 module.exports = {
   getNotifications,
