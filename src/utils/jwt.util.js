@@ -3,7 +3,7 @@ const env = require('../config/env');
 const AppError = require('./error.util');
 
 const signToken = (payload) => {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRY });
+  return jwt.sign(payload, env.JWT_SECRET);
 };
 
 const verifyToken = (token) => {

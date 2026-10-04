@@ -54,4 +54,32 @@ module.exports = {
   actionReset,
   readAllNotifications,
   deleteNotification,
+  testPush,
+};
+
+const fcmService = require('./fcm.service');
+
+const testPush = async (req, res, next) => {
+  try {
+    const { token, title, body } = req.body;
+    if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+    const payload = {
+      notification: { title: title || 'Test Title', body: body || 'Test Body' },
+      android: { notification: { channelId: 'inventory_updates_channel_v2' } }
+    };
+    const success = await fcmService.sendDeviceNotification(token, payload);
+    res.status(200).json(successResponse('Test push triggered', { success }));
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+module.exports = {
+  getNotifications,
+  requestReset,
+  actionReset,
+  readAllNotifications,
+  deleteNotification,
+  testPush,
 };

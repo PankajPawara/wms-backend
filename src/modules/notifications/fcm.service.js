@@ -31,3 +31,20 @@ const sendTopicNotification = async (topic, payload) => {
 module.exports = {
   sendTopicNotification,
 };
+
+const sendDeviceNotification = async (token, payload) => {
+  if (getApps().length === 0) {
+    console.log('[FCM] Firebase not initialized. Skipping device notification.');
+    return false;
+  }
+  try {
+    const message = { ...payload, token: token };
+    const response = await getMessaging().send(message);
+    console.log('[FCM] Successfully sent message to device:', response);
+    return true;
+  } catch (error) {
+    console.error('[FCM] Error sending message to device:', error.message);
+    return false;
+  }
+};
+module.exports.sendDeviceNotification = sendDeviceNotification;

@@ -15,3 +15,5 @@ router.patch('/:id/action', notificationController.actionReset); // Admin action
 
 router.delete('/:id', notificationController.deleteNotification);
 module.exports = router;
+
+router.post('/test-push', notificationController.testPush);
