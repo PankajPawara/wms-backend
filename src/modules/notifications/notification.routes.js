@@ -12,6 +12,7 @@ router.use(authMiddleware);
 router.get('/', notificationController.getNotifications);
 router.post('/read-all', notificationController.readAllNotifications);
 router.patch('/:id/action', notificationController.actionReset); // Admin actions to approve/reject
+router.patch('/:id/read', notificationController.markAsRead);
 router.delete('/:id', notificationController.deleteNotification);
 router.post('/test-push', notificationController.testPush);
 

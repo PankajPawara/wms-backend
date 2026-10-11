@@ -151,6 +151,17 @@ const markAllAsRead = async (userId) => {
   );
 };
 
+const markAsRead = async (id, userId) => {
+  const notif = await Notification.findById(id);
+  if (!notif) return;
+  if (notif.user_id === null) {
+    await Notification.findByIdAndUpdate(id, { $addToSet: { read_by: userId } });
+  } else {
+    notif.is_read = true;
+    await notif.save();
+  }
+};
+
 const deleteNotification = async (id, userId) => {
   const notif = await Notification.findById(id);
   if (!notif) throw new AppError('Notification not found', 404);
@@ -166,4 +177,7 @@ module.exports = {
   createResetRequest,
   handleResetAction,
   markAllAsRead,
+  markAsRead,
+  deleteNotification,
 };
+

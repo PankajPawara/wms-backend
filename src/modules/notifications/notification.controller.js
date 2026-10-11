@@ -80,11 +80,22 @@ const testPush = async (req, res, next) => {
   }
 };
 
+const markAsRead = async (req, res, next) => {
+  try {
+    await notificationService.markAsRead(req.params.id, req.user._id);
+    res.status(200).json(successResponse('Notification marked as read'));
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getNotifications,
   requestReset,
   actionReset,
   readAllNotifications,
+  markAsRead,
   deleteNotification,
   testPush,
 };
+
