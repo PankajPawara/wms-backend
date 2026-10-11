@@ -9,8 +9,9 @@ const { getApps } = require('firebase-admin/app');
  */
 const sendTopicNotification = async (topic, payload) => {
   if (getApps().length === 0) {
-    console.log(`[FCM] Firebase not initialized. Skipping notification to topic: ${topic}`);
-    return false;
+    const error = 'Firebase Admin SDK is not initialized on the server.';
+    console.warn(`[FCM] ${error} Skipping notification to topic: ${topic}`);
+    return { success: false, error };
   }
 
   try {
@@ -21,30 +22,32 @@ const sendTopicNotification = async (topic, payload) => {
 
     const response = await getMessaging().send(message);
     console.log(`[FCM] Successfully sent message to topic ${topic}:`, response);
-    return true;
+    return { success: true, messageId: response };
   } catch (error) {
     console.error(`[FCM] Error sending message to topic ${topic}:`, error.message);
-    return false;
+    return { success: false, error: error.message };
   }
-};
-
-module.exports = {
-  sendTopicNotification,
 };
 
 const sendDeviceNotification = async (token, payload) => {
   if (getApps().length === 0) {
-    console.log('[FCM] Firebase not initialized. Skipping device notification.');
-    return false;
+    const error = 'Firebase Admin SDK is not initialized on the server.';
+    console.warn(`[FCM] ${error} Skipping device notification.`);
+    return { success: false, error };
   }
   try {
     const message = { ...payload, token: token };
     const response = await getMessaging().send(message);
     console.log('[FCM] Successfully sent message to device:', response);
-    return true;
+    return { success: true, messageId: response };
   } catch (error) {
     console.error('[FCM] Error sending message to device:', error.message);
-    return false;
+    return { success: false, error: error.message };
   }
 };
-module.exports.sendDeviceNotification = sendDeviceNotification;
+
+module.exports = {
+  sendTopicNotification,
+  sendDeviceNotification,
+};
+

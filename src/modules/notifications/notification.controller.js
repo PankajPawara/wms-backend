@@ -55,10 +55,26 @@ const testPush = async (req, res, next) => {
     if (!token) return res.status(400).json({ success: false, message: 'Token required' });
     const payload = {
       notification: { title: title || 'Test Title', body: body || 'Test Body' },
-      android: { notification: { channelId: 'inventory_updates_channel_v2' } }
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'inventory_updates_channel_v2',
+          sound: 'default'
+        }
+      },
+      data: {
+        title: title || 'Test Title',
+        body: body || 'Test Body'
+      }
     };
-    const success = await fcmService.sendDeviceNotification(token, payload);
-    res.status(200).json(successResponse('Test push triggered', { success }));
+    const result = await fcmService.sendDeviceNotification(token, payload);
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'Failed to send FCM push notification'
+      });
+    }
+    res.status(200).json(successResponse('Test push triggered successfully', result));
   } catch (err) {
     next(err);
   }
