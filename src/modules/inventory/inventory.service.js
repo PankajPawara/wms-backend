@@ -76,9 +76,19 @@ const importInventory = async (filePath, fileName, adminId) => {
       title: 'Location Data Updated',
       body: `Inventory locations updated to version ${newVersion}. Sync now for latest data.`,
     },
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'inventory_updates_channel_v2',
+        sound: 'default',
+        defaultVibrateTimings: true,
+      },
+    },
     data: {
       type: 'INVENTORY_UPDATE',
       version: newVersion,
+      title: 'Location Data Updated',
+      body: `Inventory locations updated to version ${newVersion}. Sync now for latest data.`,
     }
   });
 

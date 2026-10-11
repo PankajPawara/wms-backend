@@ -8,3 +8,6 @@ Thumbs.db
 
 # Firebase Service Account Credentials
 *-firebase-adminsdk-*.json
+
+# Added by ggshield
+.cache_ggshield
